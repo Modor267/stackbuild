@@ -1,95 +1,96 @@
-import Image from 'next/image'
-import styles from './page.module.css'
+'use client'
+
+import LoadingPosts from '@/components/LoadingPosts';
+import SearchIcon from '@mui/icons-material/Search';
+import { useQuery } from '@tanstack/react-query';
+import SinglePostList from '@/components/SinglePostList';
+import Error from '@/components/Error';
+import { getAllPosts } from '@/utils/calls';
+import { useEffect, useState } from 'react';
+import Paginate from '@/components/Paginate';
+import { Post } from '@/utils/interfaces';
+
 
 export default function Home() {
+  const [page, setPage] = useState<number>(0)
+  const [limit, setLimit] = useState<number>(10)
+  const [search, setSearch] = useState<string>('')
+  const [data, setData] = useState<Post[]>([])
+
+  const { isLoading, isError, isSuccess, isFetching, refetch } = useQuery({
+    queryKey: ['POSTS'],
+    queryFn: () => getAllPosts(page, limit),
+    onSuccess: (allData) => {
+      setData(allData)
+    }
+  })
+
+  useEffect(() => { refetch() }, [page, limit])
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (search) {
+      const filteredData = data.filter((i) => {
+        return i.text.toLowerCase().includes(search.toLowerCase());
+      });
+      setData(filteredData)
+    } else {
+      refetch()
+    }
+
+  }
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <div className='home'>
+      <section className="search">
+        <div className="search-head">Search for blog posts by title...</div>
+        <form className="search-input-container" onSubmit={handleSubmit}>
+          <input
+            type="search"
+            placeholder="eg 'jack and jill'"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <button className="btn search-btn">
+            <span>search</span>{' '} <SearchIcon />
+          </button>
+        </form>
+      </section>
+
+      <div className="posts-container">
+
+        <div className="posts">
+          {
+            (isLoading || isFetching) && !isError ?
+              (
+                <div className="loading">
+                  <LoadingPosts />
+                </div>
+              )
+              :
+              isSuccess ?
+                (
+                  <div className='posts-list'>
+                    {data?.map((singlePost) => {
+                      return (
+                        <SinglePostList key={singlePost.id} data={singlePost} />
+                      )
+                    })}
+                  </div>
+                )
+                :
+                (
+                  <Error message='Something  Happened!!' code={500} />
+                )
+          }
+
         </div>
+        {
+          !isError && (
+            <Paginate page={page} setPage={setPage} limit={limit} setLimit={setLimit} />
+          )
+        }
       </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore the Next.js 13 playground.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    </div>
   )
 }
